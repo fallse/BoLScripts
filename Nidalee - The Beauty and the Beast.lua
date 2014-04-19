@@ -363,7 +363,7 @@ function Check()
 		bwcReady		= (bwcSlot		~= nil and myHero:CanUseSpell(bwcSlot)		== READY) -- Bilgewater Cutlass
 		botrkReady		= (botrkSlot	~= nil and myHero:CanUseSpell(botrkSlot)	== READY) -- Blade of the Ruined King
 		sheenReady		= (sheenSlot 	~= nil and myHero:CanUseSpell(sheenSlot) 	== READY) -- Sheen
-		lichbaneReady	= (lichbaneSlot ~= nil and myHero:CanUseSpell(lichSlot) 	== READY) -- Lichbane
+	--	lichbaneReady	= (lichbaneSlot ~= nil and myHero:CanUseSpell(lichSlot) 	== READY) -- Lichbane
 		trinityReady	= (trinitySlot 	~= nil and myHero:CanUseSpell(trinitySlot) 	== READY) -- Trinity Force
 		lyandrisReady	= (liandrysSlot	~= nil and myHero:CanUseSpell(liandrysSlot) == READY) -- Liandrys 
 		tmtReady		= (tmtSlot 		~= nil and myHero:CanUseSpell(tmtSlot)		== READY) -- Tiamat
@@ -375,7 +375,7 @@ function Check()
 		bwcSlot 		= GetInventorySlotItem(3144)
 		botrkSlot		= GetInventorySlotItem(3153)							
 		sheenSlot		= GetInventorySlotItem(3057)
-		lichbaneSlot	= GetInventorySlotItem(3100)
+	--	lichbaneSlot	= GetInventorySlotItem(3100)
 		trinitySlot		= GetInventorySlotItem(3078)
 		liandrysSlot	= GetInventorySlotItem(3151)
 		tmtSlot			= GetInventorySlotItem(3077)
