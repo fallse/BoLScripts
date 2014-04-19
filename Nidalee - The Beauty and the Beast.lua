@@ -1,4 +1,4 @@
-local Version = "1.08"
+local Version = "1.09"
 if myHero.charName ~= "Nidalee" then return end
 local IsLoaded = "The Beauty and the Beast"
 local AUTOUPDATE = true
@@ -7,10 +7,10 @@ local AUTOUPDATE = true
 ---------------------------------------------------------------------
 local UPDATE_FILE_PATH = SCRIPT_PATH..GetCurrentEnv().FILE_NAME
 local UPDATE_NAME = "Nidalee - The Beauty and the Beast"
-local UPDATE_HOST = "bolqqq.funpic.de"
-local UPDATE_PATH = "/Scripts/Nidalee%20-%20The%20Beauty%20and%20the%20Beast.lua"
+local UPDATE_HOST = "raw.github.com"
+local UPDATE_PATH = "/bolqqq/BoLScripts/master/Nidalee%20-%20The%20Beauty%20and%20the%20Beast.lua?chunk="..math.random(1, 1000)
 local UPDATE_FILE_PATH = SCRIPT_PATH..GetCurrentEnv().FILE_NAME
-local UPDATE_URL = "http://"..UPDATE_HOST..UPDATE_PATH
+local UPDATE_URL = "https://"..UPDATE_HOST..UPDATE_PATH
 
 function AutoupdaterMsg(msg) print("<font color=\"#FF99CC\">["..IsLoaded.."]:</font> <font color=\"#FFDFBF\">"..msg..".</font>") end
 if AUTOUPDATE then
@@ -42,10 +42,7 @@ local REQUIRED_LIBS =
 		["Collision"] = "https://bitbucket.org/Klokje/public-klokjes-bol-scripts/raw/master/Common/Collision.lua",
 		["Prodiction"] = "https://bitbucket.org/Klokje/public-klokjes-bol-scripts/raw/master/Common/Prodiction.lua"
 	}
-	
-
-	
-	
+		
 local DOWNLOADING_LIBS = false
 local DOWNLOAD_COUNT = 0
 local SELF_NAME = GetCurrentEnv() and GetCurrentEnv().FILE_NAME or ""
