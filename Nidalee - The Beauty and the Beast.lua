@@ -1,4 +1,4 @@
-local Version = "1.09"
+local Version = "1.10"
 if myHero.charName ~= "Nidalee" then return end
 local IsLoaded = "The Beauty and the Beast"
 local AUTOUPDATE = true
@@ -82,7 +82,7 @@ if DOWNLOADING_LIBS then return end
 	local qCname, wCname, eCname = "Takedown", "Pounce", "Swipe"
 	local QREADY, WREADY, EREADY, RREADY
 	local ignite = nil
-	local qColor = ARGB(153, 178, 255, 0 )
+	local qColor = ARGB(255,38,147, 0 )
 	local wColor = ARGB(255, 38, 201,170)
 	local eColor = ARGB(89, 179, 0,128)
 -- Vars for VPrediction --
@@ -132,11 +132,39 @@ if DOWNLOADING_LIBS then return end
 					startW = { 2,3,1,1,1,4,1,3,1,3,4,3,3,2,2,4,2,2 },
 					startE = { 3,1,1,2,1,4,1,3,1,3,4,3,3,2,2,4,2,2 },
 					hardLane = { 3,1,3,2,3,4,1,1,1,1,4,3,3,2,2,4,2,2 }
-					}	
--- Misc Vars --
+					}
+-- Vars for Damage Calculations and KilltextDrawing --
+	local qHDmg = 0
+	local qCDmg = 0
+	local wCDmg = 0
+	local eCDmg = 0
+	local dfgDmg = 0
+	local hxgDmg = 0
+	local bwcDmg = 0
+	local botrkDmg = 0
+	local sheenDmg = 0
+	local lichbaneDmg = 0
+	local trinityDmg = 0
+	local liandrysDmg = 0
+	local KillText = {}
+	local KillTextColor = ARGB(250, 255, 38, 1)
+	local KillTextList = {		
+							"Harass your enemy!", 					-- 01
+							"Wait for your CD's!",					-- 02
+							"Kill! - Ignite",						-- 03
+							"Kill! - Human (Q)",					-- 04 
+							"Kill! - Cougar (Q)",					-- 05
+							"Kill! - Cougar (W)",					-- 06
+							"Kill! - Cougar (E)",					-- 07
+							"Kill! - Cougar (Q)+(W)",				-- 08
+							"Kill! - Cougar (Q)+(E)",				-- 09
+							"Kill! - Cougar (W)+(E)",				-- 10
+							"Kill! - Cougar (Q)+(W)+(E)",			-- 11
+							"Kill! - Human (Q) + Cougar (Q)+(W)+(E)"-- 12
+						}
+	-- Misc Vars --
 	local Recalling = false
 	local Menu 
-
 ---------------------------------------------------------------------
 --- Onload Function -------------------------------------------------
 ---------------------------------------------------------------------
@@ -177,6 +205,7 @@ function AddMenu()
 	
 	-- Create SubMenu --
 	Menu:addSubMenu(""..myHero.charName..": Basic Settings", "Basic")
+	Menu:addSubMenu(""..myHero.charName..": HealManager Settings", "HealManager")
 	Menu:addSubMenu(""..myHero.charName..": Combo Settings", "SBTW")
 	Menu:addSubMenu(""..myHero.charName..": KillSteal Settings", "KS")
 	Menu:addSubMenu(""..myHero.charName..": Farm Settings", "Farm")
@@ -188,11 +217,14 @@ function AddMenu()
 	-- Basics -- 
 	Menu.Basic:addParam("aimQ", "Throw a predicted Spear: ", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("C"))
 	Menu.Basic:addParam("aimQtoggle", "Auto throw a predicted Spear: ", SCRIPT_PARAM_ONKEYTOGGLE, false, string.byte("U"))
-	Menu.Basic:addParam("aimWbehind", "Aim (W) behind the Target: ", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("X"))
+	Menu.Basic:addParam("aimWbehind", "Throw a Trap: ", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("X"))
+	Menu.Basic:addParam("aimWdistance", "Distance trap is casted behind: ", SCRIPT_PARAM_SLICE, 100, 0, 250, -1)
 	Menu.Basic:addParam("autoHeal", "Auto Heal Toggle: ", SCRIPT_PARAM_ONKEYTOGGLE, false, string.byte("N"))
 	Menu.Basic:addParam("autoHealSlider", "Auto Heal if Health below %: ",  SCRIPT_PARAM_SLICE, 50, 0, 100, -1)
 	Menu.Basic:addParam("AutoLevelSkills", "Auto Level Skills (Reload Script!)", SCRIPT_PARAM_LIST, 1, { "No Autolevel", "QEQW - R>Q>E>W", "WEQQ - R>Q>E>W", "EQQW - R>Q>E>W", "EQEWE- R>Q>E>W"})
 	
+	-- HealManager --
+
 	-- SBTW Combo --
 	Menu.SBTW:addParam("sbtwKey", "Combo Key: ", SCRIPT_PARAM_ONKEYDOWN, false, 32)
 	Menu.SBTW:addParam("sbtwHQ", "Use "..qHname.." (Q) in Combo", SCRIPT_PARAM_ONOFF, true)
@@ -201,14 +233,17 @@ function AddMenu()
 	Menu.SBTW:addParam("sbtwCQ", "Use "..qCname.." (Q) in Combo", SCRIPT_PARAM_ONOFF, true)
 	Menu.SBTW:addParam("sbtwCW", "Use "..wCname.." (W) in Combo", SCRIPT_PARAM_ONOFF, true)
 	Menu.SBTW:addParam("sbtwCE", "Use "..eCname.." (E) in Combo", SCRIPT_PARAM_ONOFF, true)
-	Menu.SBTW:addParam("sbtwR", "Switch Forms (R) in Combo: ", SCRIPT_PARAM_ONOFF, true)
+	Menu.SBTW:addParam("sbtwR", "Switch forms (R) in Combo: ", SCRIPT_PARAM_ONOFF, true)
 	Menu.SBTW:addParam("sbtwItems", "Use Items in Combo: ", SCRIPT_PARAM_ONOFF, true)
 	Menu.SBTW:addParam("sbtwOrb", "OrbWalk in Combo", SCRIPT_PARAM_ONOFF, true)
 	Menu.SBTW:addParam("sbtwHealSlider", "Auto Heal if Health below %: ",  SCRIPT_PARAM_SLICE, 50, 0, 100, -1)
 	
 	-- KillSteal --
---	Menu.KS:addParam("aIgnite", "Use Auto Ignite", SCRIPT_PARAM_ONOFF, true)
-	
+	Menu.KS:addParam("Ignite", "Use Auto Ignite", SCRIPT_PARAM_ONOFF, true)
+	Menu.KS:addParam("smartKShuman", "Use smart KS as Human: ", SCRIPT_PARAM_ONOFF, true)
+	Menu.KS:addParam("smartKScougar", "Use smart KS as Cougar: ", SCRIPT_PARAM_ONOFF, true)
+	Menu.KS:addParam("KSuseR", "Switch forms (R) for KS: ", SCRIPT_PARAM_ONOFF, false)
+
 	-- Lane Clear --
 	Menu.Farm:addParam("laneClearTyp", "Form in LaneClear: ", SCRIPT_PARAM_LIST, 3, {"Human", "Cougar", "Mixed"})
 	Menu.Farm:addParam("clearLane", "Lane Clear Key", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("G"))
@@ -248,6 +283,7 @@ function AddMenu()
 	Menu.Draw:addParam("drawE", "Draw Human E Range: ", SCRIPT_PARAM_ONOFF, true)
 	Menu.Draw:addParam("drawJumpspots", "Draw Jumpspots while pressing Key: ", SCRIPT_PARAM_ONOFF, true)
 	Menu.Draw:addParam("drawPerJumpspots", "Draw Jumpspots always: ", SCRIPT_PARAM_ONOFF, false)
+	Menu.Draw:addParam("drawKillText", "Draw KillText on enemy: ", SCRIPT_PARAM_ONOFF, true)
 	-- LFC --
 	Menu.Draw:addSubMenu("["..myHero.charName.." - LFC Settings]", "LFC")
 	Menu.Draw.LFC:addParam("LagFree", "Activate Lag Free Circles", SCRIPT_PARAM_ONOFF, false)
@@ -255,8 +291,12 @@ function AddMenu()
 	Menu.Draw.LFC:addParam("CLinfo", "Higher length = Lower FPS Drops", SCRIPT_PARAM_INFO, "")
 	
 	-- Prediction --
-	Menu.Prediction:addParam("PredictionMode", "Spear Prediction: ", SCRIPT_PARAM_LIST, 1, {"VPrediction", "PROdiction", "VIP-Prediction"})
-	Menu.Prediction:addParam("QHitChance", "HitChance in VIP-Prediction: ", SCRIPT_PARAM_SLICE, 0.7, 0.1, 1, 2)
+	Menu.Prediction:addParam("PredictionMode", "Spear Prediction: ", SCRIPT_PARAM_LIST, 1, {"VPrediction", "PROdiction", "BoL-Prediction"})
+	Menu.Prediction:addParam("BoLHitChance", "HitChance in BoL-Prediction: ", SCRIPT_PARAM_SLICE, 0.7, 0.1, 1, 2)
+	Menu.Prediction:addParam("VPredHitChance", "HitChance in VPrediction: ", SCRIPT_PARAM_LIST, 2, {"Low Hitchance", "High Hitchance", "Target slow/close", "Target immobile", "Target dashing/blinking"})
+	Menu.Prediction:addParam("VPHitbox", "Use HitBox in VPrediction: ", SCRIPT_PARAM_ONOFF, false) 
+	Menu.Prediction:addParam("ProHitbox", "Use HitBox in PROdiction: ", SCRIPT_PARAM_ONOFF, false) 
+	Menu.Prediction:addParam("BoLHitbox", "Use HitBox in BoL-Prediction: ", SCRIPT_PARAM_ONOFF, false) 
 	
 	-- Other --
 	Menu:addParam("Version", "Version", SCRIPT_PARAM_INFO, Version)
@@ -275,16 +315,25 @@ function OnTick()
 	ts:update()
 	Target = ts.target 
 	Check()
+	DamageCalculation()
 	LFCfunc()
 	AutoLevelMySkills()
 	MyAccurateDelay()
 
-	-- Auto Ignite --
---	if Menu.KS.aIgnite and Target ~= nil then AutoIgnite() end
+	if Target then
+			-- Auto Ignite
+			if Menu.KS.AutoIgnite then AutoIgnite(Target) end
+			-- Toggle Auto Predicted Q Harass --
+			if Menu.Basic.aimQtoggle and not Recalling then AimTheQ() end
+			-- Aim Predicted Q --
+			if Menu.Basic.aimQ then AimTheQ()end
+			-- Aim W behind Target --
+			if Menu.Basic.aimWbehind then AimTheWbehind() end
+	end
 	-- Lane Clear --
 	if Menu.Farm.clearLane then LaneClear() end
 	-- Jungle Steal --
-	if Menu.Jungle.jungleSteal then checkJungleSteal() end
+--	if Menu.Jungle.jungleSteal then checkJungleSteal() end
 	-- Last Hit --
 	if Menu.Farm.lastHitMinions then lastHit() end
 	-- Jungle Clear --
@@ -297,19 +346,6 @@ function OnTick()
 	if Menu.Jump.Jump then JumpAssistant() end 
 	-- SBTW Combo --
 	if Menu.SBTW.sbtwKey then SBTW() end
-	-- Aim Predicted Q Function --
-		if Target ~= nil and Menu.Basic.aimQ
-			then AimTheQ() 
-
-		end
-	-- Toggle Auto Predicted Q Harass --
-		if Target ~=nil and Menu.Basic.aimQtoggle and not Recalling
-			then AimTheQ()
-		end
-	-- Starting Aim W behind Function --
-		if Target ~= nil and Menu.Basic.aimWbehind
-			then AimTheWbehind() 
-		end
 end
 ---------------------------------------------------------------------
 --- Function Checks for Spells and Forms ----------------------------
@@ -357,6 +393,7 @@ function Check()
 	or myHero:GetSpellData(_E).name == "Swipe"
 		then COUGAR = true HUMAN = false
 	end
+	
 	-- Check if items are ready -- 
 		dfgReady		= (dfgSlot		~= nil and myHero:CanUseSpell(dfgSlot)		== READY) -- Deathfire Grasp
 		hxgReady		= (hxgSlot		~= nil and myHero:CanUseSpell(hxgSlot)		== READY) -- Hextech Gunblade
@@ -394,7 +431,7 @@ function UseItems()
 		if botrkReady	and GetDistance(enemy) <= 450 then CastSpell(botrkSlot, enemy) end
 		if tmtReady		and GetDistance(enemy) <= 185 then CastSpell(tmtSlot) end
 		if hdrReady 	and GetDistance(enemy) <= 185 then CastSpell(hdrSlot) end
-		if youReady		and GetDistance(enemy) <= 185 then CastSpell(youSlot) end -- needs better logic
+		if youReady		and GetDistance(enemy) <= 185 then CastSpell(youSlot) end
 	end
 end
 ---------------------------------------------------------------------
@@ -425,7 +462,19 @@ function OnDraw()
 						DrawCircle(group.pB.x, group.pB.y, group.pB.z, minRange, 0xFFFFBF)
 					end
 				end
+	end
+-- Draw KillText --
+	if Menu.Draw.drawKillText then
+			for i = 1, heroManager.iCount do
+				local enemy = heroManager:GetHero(i)
+				if ValidTarget(enemy) and enemy ~= nil then
+					local barPos = WorldToScreen(D3DXVECTOR3(enemy.x, enemy.y, enemy.z))
+					local PosX = barPos.x - 60
+					local PosY = barPos.y - 10
+					DrawText(KillTextList[KillText[i]], 16, PosX, PosY, KillTextColor)
+				end
 			end
+		end
 end
 ---------------------------------------------------------------------
 -- Checks Prediction Mode and set ModeVar ---------------------------
@@ -465,13 +514,13 @@ end
 -- VPrediction of the Q --
 function AimTheQVP()
 			local CastPosition,  HitChance,  Position = VP:GetLineCastPosition(Target, qDelay, qWidth, qRange, qSpeed, myHero, true)
-			if HitChance >= 2  and GetDistance(Target) <= 1900 and QREADY
+			if HitChance >= Menu.Prediction.VPredHitChance and GetDistance(Target) <= 1900 and QREADY
 			then CastSpell(_Q,CastPosition.x,CastPosition.z)
 			end
 end
 -- VIP-Prediction of the Q --
 function AimTheQVIP()
-            if VipPredTarget and qp:GetHitChance(Target) > Menu.Prediction.QHitChance
+            if VipPredTarget and qp:GetHitChance(Target) > Menu.Prediction.BoLHitChance
 			then
 			local coll = Collision(qRange, qSpeed, qDelay, qWidth)
 				if not coll:GetMinionCollision(Target, myHero)
@@ -486,19 +535,29 @@ function GetQPos(unit, pos)
 end
 	-- Aims the PROdicted Q --
 function AimTheQPRO(unit, pos, spell)
-    if (GetDistance(pos) - getHitBoxRadius(unit)/2 < qRange)
-	--	if GetDistance(pos) < qRange
+if Menu.Prediction.ProHitbox
+	then 
+		if (GetDistance(pos) - getHitBoxRadius(unit)/2 < qRange)
 		then
         local coll = Collision(qRange, qSpeed, qDelay, qWidth)
             if not coll:GetMinionCollision(pos, myHero)
 				then CastSpell(_Q, pos.x, pos.z)
             end
     end
+else
+		if GetDistance(pos) < qRange
+		then
+        local coll = Collision(qRange, qSpeed, qDelay, qWidth)
+            if not coll:GetMinionCollision(pos, myHero)
+				then CastSpell(_Q, pos.x, pos.z)
+            end
+end
+end
 end
 	-- Calls the function when an enemy starts to dash (Dash, jump, getting knockbacked) --
 function OnDashFunc(unit, pos, spell)
     if (GetDistance(pos) - getHitBoxRadius(unit)/2 < qRange)
- -- if GetDistance(pos) < qRange
+--	else GetDistance(pos) < qRange
 		then
         local coll = Collision(qRange, qSpeed, qDelay, qWidth)
             if not coll:GetMinionCollision(pos, myHero)
@@ -543,7 +602,7 @@ end
 function AimtheW()
 		if HUMAN == true then
 			local CastPosition,  HitChance,  Position = VP:GetCircularCastPosition(Target, wDelay, wWidth, wRange) 
-			if HitChance >= 2 and GetDistance(CastPosition) <= 1200 and WREADY
+			if HitChance >= Menu.Prediction.VPredHitChance and GetDistance(CastPosition) <= 1200 and WREADY
 			then CastSpell(_W, CastPosition.x, CastPosition.z)
             end
         end
@@ -552,8 +611,8 @@ end
 function AimTheWbehind()
 		if HUMAN == true and GetDistance(Target) <= 900 then
 			local CastPosition,  HitChance,  Position = VP:GetCircularCastPosition(Target, 0.500, 80, 900)
-			if HitChance >= 2 and GetDistance(CastPosition) <= 900 and WREADY
-			then local CastBehind = myHero + Vector(CastPosition.x-myHero.x, myHero.y, CastPosition.z-myHero.z):normalized()*(GetDistance(myHero,CastPosition)+100)
+			if HitChance >= Menu.Prediction.VPredHitChance and GetDistance(CastPosition) <= 900 and WREADY
+			then local CastBehind = myHero + Vector(CastPosition.x-myHero.x, myHero.y, CastPosition.z-myHero.z):normalized()*(GetDistance(myHero,CastPosition)+Menu.Basic.aimWdistance)
 			if GetDistance(myHero,CastBehind) <= 900 then CastSpell(_W,CastBehind.x,CastBehind.z) end
             end
         end
@@ -573,7 +632,7 @@ function CastTheCQ(enemy)
 		return false
 end
 -- Cougar W --
-function CastTheWE(enemy)
+function CastTheCW(enemy)
 		if not enemy then enemy = Target end
 		if (not WREADY or (GetDistance(enemy) > eWRange))
 			then return false
@@ -667,12 +726,11 @@ end
 ---------------------------------------------------------------------
 --- KillSteal Functions ---------------------------------------------
 ---------------------------------------------------------------------
-function AutoIgnite()
----------------------------------------------------------------------------------------------rewrite-----------------------------
----------------------------------------------------------------------------------------------rewrite-----------------------------
----------------------------------------------------------------------------------------------rewrite-----------------------------
----------------------------------------------------------------------------------------------rewrite-----------------------------
----------------------------------------------------------------------------------------------rewrite-----------------------------
+function AutoIgnite(enemy)
+		if enemy.health <= iDmg and GetDistance(enemy) <= 600 and ignite ~= nil
+			then
+				if IREADY then CastSpell(ignite, enemy) end
+		end
 end
 -- Checks the Summonerspells for ignite (OnLoad) --
 function IgniteCheck()
@@ -681,6 +739,72 @@ function IgniteCheck()
 	elseif myHero:GetSpellData(SUMMONER_2).name:find("SummonerDot") then
 			ignite = SUMMONER_2
 	end
+end
+function smartKS()
+	for _, enemy in pairs(enemyHeroes) do
+		if enemy ~= nil and ValidTarget(enemy) then
+		local distance = GetDistance(enemy)
+		local hp = enemy.health
+			-- smartKillSteal as Human --
+			if Menu.KS.smartKShuman
+				then
+					-- KillSteal with HQ --
+					if hp <= qHDmg and QREADY and (distance <= qRange)
+						then AimTheQ()
+					end
+			end
+			-- smartKillSteal as Cougar --
+			if Menu.KS.smartKScougar
+				then 
+					-- KillSteal with CQ --
+					if hp <= qCDmg and QREADY and (distance <= qCRange) 
+						then
+							if HUMAN 
+								then	if Menu.KS.KSuseR then CastSpell(_R) end
+							else	CastTheCQ(enemy)
+							end
+					-- KillSteal with CW --
+					elseif hp <= wCDmg and WREADY and (distance <= wCRange) 
+						then 
+					-- KillSteal with CE --
+					elseif hp <= eCDmg and EREADY and (distance <= eCRange) 
+						then
+							if HUMAN
+							then	if Menu.KS.KSuseR then CastSpell(_R) end
+							else	CastTheCE(enemy)
+							end
+					-- KillSteal with CQ + CW --
+					elseif hp <= (qCDmg + wCDmg) and QREADY and WREADY and (distance <= wCRange)
+						then
+							if HUMAN 
+								then	if Menu.KS.KSuseR then CastSpell(_R) end
+								else CastSpell(_W, enemy.x, enemy.z)
+							end
+					-- KillSteal with CQ + CE --
+					elseif hp <= (qCDmg + eCDmg) and QREADY and EREADY and (distance <= qCRange)
+						then 
+							if HUMAN
+							then	if Menu.KS.KSuseR then CastSpell(_R) end
+							else	CastTheCE(enemy)
+							end
+					-- KillSteal with CW + CE --
+					elseif hp <= (wCDmg + eCDmg) and WREADY and EREADY and (distance <= wCRange)
+						then
+						if HUMAN 
+								then	if Menu.KS.KSuseR then CastSpell(_R) end
+								else CastSpell(_W, enemy.x, enemy.z)
+								end
+					-- KillSteal with CQ + CW + CE --
+					elseif hp <= (qCDmg + wCDmg + eCDmg) and QREADY and WREADY and EREADY and (distance <= wCRange)
+						then 
+						if HUMAN 
+								then	if Menu.KS.KSuseR then CastSpell(_R) end
+								else CastSpell(_W, enemy.x, enemy.z)
+					end
+			end
+		end
+	end
+end
 end
 ---------------------------------------------------------------------
 --- Function for Misc Movement --------------------------------------
@@ -1387,4 +1511,96 @@ function AutoLevelMySkills()
 		elseif Menu.Basic.AutoLevelSkills == 5 then
 			autoLevelSetSequence(levelSequence.hardLane)
 		end
+end
+---------------------------------------------------------------------
+--- Function Damage Calculations for Skills/Items/Enemys --- 
+---------------------------------------------------------------------
+function DamageCalculation()
+	for i=1, heroManager.iCount do
+		local enemy = heroManager:GetHero(i)
+			if ValidTarget(enemy) and enemy ~= nil
+				then
+				aaDmg 		= ((getDmg("AD", enemy, myHero)))
+				qHDmg 		= ((getDmg("Q", enemy, myHero)) or 0)	-- Human Q
+				qCDmg		= ((getDmg("QM", enemy, myHero)) or 0)	-- Cougar Q
+				wCDmg		= ((getDmg("WM", enemy, myHero)) or 0)	-- Cougar W
+				eCDmg		= ((getDmg("EM", enemy, myHero)) or 0)	-- Cougar E
+				iDmg 		= ((ignite and getDmg("IGNITE", enemy, myHero)) or 0)	-- Ignite
+				dfgDmg 		= ((dfgReady and getDmg("DFG", enemy, myHero)) or 0)	-- Deathfire Grasp
+				hxgDmg 		= ((hxgReady and getDmg("HXG", enemy, myHero)) or 0)	-- Hextech Gunblade
+				bwcDmg 		= ((bwcReady and getDmg("BWC", enemy, myHero)) or 0)	-- Bilgewater Cutlass
+				botrkDmg 	= ((botrkReady and getDmg("RUINEDKING", enemy, myHero)) or 0)	-- Blade of the Ruined King
+				sheenDmg	= ((sheenReady and getDmg("SHEEN", enemy, myHero)) or 0)	-- Sheen
+			--	lichbaneDmg = ((lichbaneReady and getDmg("LICHBANE", enemy, myHero)) or 0)	-- Lichbane
+				trinityDmg 	= ((trinityReady and getDmg("TRINITY", enemy, myHero)) or 0)	-- Trinity Force
+				liandrysDmg = ((liandrysReady and getDmg("LIANDRYS", enemy, myHero)) or 0)	-- Liandrys 
+				local extraDmg 	= iDmg + dfgDmg + hxgDmg + bwcDmg + botrkDmg + sheenDmg + trinityDmg + liandrysDmg -- + lichbaneDmg 
+				local abilityDmg = qHDmg + qCDmg + wCDmg + eCDmg
+				local totalDmg = abilityDmg + extraDmg
+	-- Set Kill Text --	
+					-- "Kill! - Ignite" --
+					if enemy.health <= iDmg
+						then
+							 if IREADY then KillText[i] = 3
+							 else KillText[i] = 2
+							 end
+					-- "Kill! - Human (Q)" --
+					elseif enemy.health <= qHDmg
+						then
+							if QREADY then KillText[i] = 4
+							else KillText[i] = 2
+							end
+					-- "Kill! - Cougar (Q)" -- 		
+					elseif enemy.health <= qCDmg
+						then
+							if QREADY then KillText[i] = 5
+							else KillText[i] = 2
+							end
+					-- "Kill! - Cougar (W)" --
+					elseif enemy.health <= wCDmg
+						then
+							if WREADY then KillText[i] = 6
+							else KillText[i] = 2
+							end
+					-- "Kill! - Cougar (E)" --
+					elseif enemy.health <= eCDmg
+						then
+							if EREADY then KillText[i] = 7
+							else KillText[i] = 2
+							end
+					-- "Kill! - Cougar (Q)+(W)" --
+					elseif enemy.health <= (qCDmg + wCDmg)
+						then
+							if QREADY and WREADY then KillText[i] = 8
+							else KillText[i] = 2
+							end
+					-- Kill! - Cougar (Q)+(E)" --
+					elseif enemy.health <= (qCDmg + eCDmg)
+						then
+							if QREADY and EREADY then KillText[i] = 9
+							else KillText[i] = 2
+							end
+					-- "Kill! - Cougar (W)+(E)" --
+					elseif enemy.health <= (wCDmg + eCDmg)
+						then
+							if WREADY and EREADY then KillText[i] = 10
+							else KillText[i] = 2
+							end
+					-- "Kill! - Cougar (Q)+(W)+(E)" --
+					elseif enemy.health <= (qCDmg + wCDmg + eCDmg)
+						then
+							if QREADY and WREADY and EREADY then KillText[i] = 11
+							else KillText[i] = 2
+							end
+					-- "Kill! - Human (Q) + Cougar (Q)+(W)+(E)" --
+					elseif enemy.health <= (qHDmg + qCDmg + wCDmg + eCDmg)
+						then
+							if QREADY and WREADY and EREADY then KillText[i] = 12
+							else KillText[i] = 2
+							end
+					-- "Harass your enemy!" -- 
+					else KillText[i] = 1
+					end	
+		end
+	end
 end
