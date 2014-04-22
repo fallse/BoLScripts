@@ -31,7 +31,7 @@ IsLoaded = "Predators Pride"
 local autoupdate = true
 local UPDATE_SCRIPT_NAME = "Rengar - Predators Pride"
 local UPDATE_HOST = "raw.github.com"
-local UPDATE_PATH = "/bolqqq/BoLScripts/master/Rengar%20-%20Predators%20Pride.lua=chunk"..math.random(1, 1000)
+local UPDATE_PATH = "/bolqqq/BoLScripts/master/Rengar%20-%20Predators%20Pride.lua?chunk="..math.random(1, 1000)
 local UPDATE_FILE_PATH = SCRIPT_PATH..GetCurrentEnv().FILE_NAME
 local UPDATE_URL = "https://"..UPDATE_HOST..UPDATE_PATH
 
