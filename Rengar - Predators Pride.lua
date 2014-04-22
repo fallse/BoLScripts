@@ -1,4 +1,7 @@
-local Version = "0.11"
+local Version = "0.12"
+if myHero.charName ~= "Rengar" then return end
+local IsLoaded = "Predators Pride"
+local AUTOUPDATE = true
 --[[
 Changelog:
 -- 0.06 -- 
@@ -21,44 +24,73 @@ Changelog:
 	- Fixed some small bugs
 -- 0.11 --
 	- Preparationpatch for the new Autoupdatefunction
+-- 0.12 --
+	- New Autoupdater
 ]]--
-if myHero.charName ~= "Rengar" then return end
-require 'VPrediction'
-IsLoaded = "Predators Pride"
 ---------------------------------------------------------------------
---- Auto Update---
+--- AutoUpdate for the script ---------------------------------------
 ---------------------------------------------------------------------
-local autoupdate = true
-local UPDATE_SCRIPT_NAME = "Rengar - Predators Pride"
+local UPDATE_FILE_PATH = SCRIPT_PATH..GetCurrentEnv().FILE_NAME
+local UPDATE_NAME = "Rengar - Predators Pride"
 local UPDATE_HOST = "raw.github.com"
 local UPDATE_PATH = "/bolqqq/BoLScripts/master/Rengar%20-%20Predators%20Pride.lua?chunk="..math.random(1, 1000)
 local UPDATE_FILE_PATH = SCRIPT_PATH..GetCurrentEnv().FILE_NAME
 local UPDATE_URL = "https://"..UPDATE_HOST..UPDATE_PATH
 
-local ServerData
-if autoupdate then
-	GetAsyncWebResult(UPDATE_HOST, UPDATE_PATH, function(d) ServerData = d end)
-	function update()
-		if ServerData ~= nil then
-			local ServerVersion
-			local send, tmp, sstart = nil, string.find(ServerData, "local Version = \"")
-			if sstart then
-				send, tmp = string.find(ServerData, "\"", sstart + 1)
-			end
-			if send then
-				ServerVersion = tonumber(string.sub(ServerData, sstart + 1, send - 1))
-			end
-
-			if ServerVersion ~= nil and tonumber(ServerVersion) ~= nil and tonumber(ServerVersion) > tonumber(Version) then
-				DownloadFile(UPDATE_URL.."?nocache"..myHero.charName..os.clock(), UPDATE_FILE_PATH, function () print("<font color=\"#4CA6FF\"><b>"..UPDATE_SCRIPT_NAME.."</b> successfully updated. Please reload (double F9)</font>") end)     
-			elseif ServerVersion then
-				print("<font color=\"#FFFF4C\"><b>"..UPDATE_SCRIPT_NAME.."</b> Your script is already the latest version.</font>")
-			end		
-			ServerData = nil
-		end
-	end
-	AddTickCallback(update)
+function AutoupdaterMsg(msg) print("<font color=\"#FF99CC\">["..IsLoaded.."]:</font> <font color=\"#FFDFBF\">"..msg..".</font>") end
+if AUTOUPDATE then
+    local ServerData = GetWebResult(UPDATE_HOST, UPDATE_PATH)
+    if ServerData then
+        local ServerVersion = string.match(ServerData, "local Version = \"%d+.%d+\"")
+        ServerVersion = string.match(ServerVersion and ServerVersion or "", "%d+.%d+")
+        if ServerVersion then
+            ServerVersion = tonumber(ServerVersion)
+            if tonumber(Version) < ServerVersion then
+                AutoupdaterMsg("A new version is available: ["..ServerVersion.."]")
+                AutoupdaterMsg("The script is updating... please don't press [F9]!")
+                DelayAction(function() DownloadFile(UPDATE_URL, UPDATE_FILE_PATH, function ()
+				AutoupdaterMsg("Successfully updated! ("..Version.." -> "..ServerVersion.."), Please reload (double [F9]) for the updated version!") end) end, 3)
+            else
+                AutoupdaterMsg("Your script is already the latest version: ["..ServerVersion.."]")
+            end
+        end
+    else
+        AutoupdaterMsg("Error downloading version info!")
+    end
 end
+---------------------------------------------------------------------
+--- AutoDownload the required libraries -----------------------------
+---------------------------------------------------------------------
+local REQUIRED_LIBS = 
+	{
+		["VPrediction"] = "https://raw.github.com/honda7/BoL/master/Common/VPrediction.lua",
+	}
+		
+local DOWNLOADING_LIBS = false
+local DOWNLOAD_COUNT = 0
+local SELF_NAME = GetCurrentEnv() and GetCurrentEnv().FILE_NAME or ""
+
+function AfterDownload()
+	DOWNLOAD_COUNT = DOWNLOAD_COUNT - 1
+	if DOWNLOAD_COUNT == 0 then
+		DOWNLOADING_LIBS = false
+		print("<font color=\"#FF99CC\">["..IsLoaded.."]:</font><font color=\"#FFDFBF\"> Required libraries downloaded successfully, please reload (double [F9]).</font>")
+	end
+end
+
+for DOWNLOAD_LIB_NAME, DOWNLOAD_LIB_URL in pairs(REQUIRED_LIBS) do
+	if FileExist(LIB_PATH .. DOWNLOAD_LIB_NAME .. ".lua") then
+		require(DOWNLOAD_LIB_NAME)
+	else
+		DOWNLOADING_LIBS = true
+		DOWNLOAD_COUNT = DOWNLOAD_COUNT + 1
+
+		print("<font color=\"#FF99CC\">["..IsLoaded.."]:</font><font color=\"#FFDFBF\"> Not all required libraries are installed. Downloading: <b><u><font color=\"#73B9FF\">"..DOWNLOAD_LIB_NAME.."</font></u></b> now! Please don't press [F9]!</font>")
+		DownloadFile(DOWNLOAD_LIB_URL, LIB_PATH .. DOWNLOAD_LIB_NAME..".lua", AfterDownload)
+	end
+end
+
+if DOWNLOADING_LIBS then return end
 ---------------------------------------------------------------------
 --- Vars ---
 ---------------------------------------------------------------------
