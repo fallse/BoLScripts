@@ -1,4 +1,4 @@
-local Version = "1.11"
+local Version = "1.10"
 if myHero.charName ~= "Nidalee" then return end
 local IsLoaded = "The Beauty and the Beast"
 local AUTOUPDATE = true
@@ -41,7 +41,8 @@ local REQUIRED_LIBS =
 		["VPrediction"] = "https://raw.github.com/honda7/BoL/master/Common/VPrediction.lua",
 		["Collision"] = "https://bitbucket.org/Klokje/public-klokjes-bol-scripts/raw/master/Common/Collision.lua",
 		["Prodiction"] = "https://bitbucket.org/Klokje/public-klokjes-bol-scripts/raw/master/Common/Prodiction.lua"
-	}		
+	}
+		
 local DOWNLOADING_LIBS = false
 local DOWNLOAD_COUNT = 0
 local SELF_NAME = GetCurrentEnv() and GetCurrentEnv().FILE_NAME or ""
@@ -71,10 +72,10 @@ if DOWNLOADING_LIBS then return end
 --- Vars ------------------------------------------------------------
 ---------------------------------------------------------------------
 -- Vars for Ranges --
-	local qRange, wRange, eRange = 1500, 900, 600 
-	local qSpeed, qDelay, qWidth = 1300, 0.0, 70 -- changed from 60 to 70 for testing - 0.250 from 0.125
+	local qRange, wRange, eRange = 1500, 900, 600
+	local qSpeed, qDelay, qWidth = 1300, 0.125, 60
 	local wSpeed, wDelay, wWidth = 1450, 0.500, 80
-	local wCRange, eCRange = 375, 350 -- E Range = 400-50 for testing
+	local wCRange, eCRange = 375, 375 -- E Range = 400-25 for testing
 	local qCRange = myHero.range + GetDistance(myHero.minBBox)
 -- Vars for Abilitys --
 	local qHname, wHname, eHname, rName = "Javelin Toss", "Bushwhack", "Primal Surge", "Aspect of the Cougar"
@@ -161,15 +162,9 @@ if DOWNLOADING_LIBS then return end
 							"Kill! - Cougar (Q)+(W)+(E)",			-- 11
 							"Kill! - Human (Q) + Cougar (Q)+(W)+(E)"-- 12
 						}
--- Misc Vars --
-	local JumpSpotColor = ARGB(250, 255, 38, 1)
+	-- Misc Vars --
 	local Recalling = false
-	local Menu
-	local enemyHeroes = GetEnemyHeroes()
--- Vars for Healmanager --
-	local TeamChamps = GetAllyHeroes()
-    local myPlayer = GetMyHero()
-	local needSelfHeal = false 
+	local Menu 
 ---------------------------------------------------------------------
 --- Onload Function -------------------------------------------------
 ---------------------------------------------------------------------
@@ -186,8 +181,6 @@ function OnLoad()
     ProdQ = Prod:AddProdictionObject(_Q, qRange, qSpeed, qDelay, qWidth)
 	-- VIP Prediction --
 	qp = TargetPredictionVIP(qRange, qSpeed, qDelay, qWidth)
-	-- Colission --
-	QCol = Collision(qRange, qSpeed, qDelay, qWidth)
 	-- CallBacks --
      for i = 1, heroManager.iCount do
            local hero = heroManager:GetHero(i)
@@ -223,24 +216,15 @@ function AddMenu()
 	
 	-- Basics -- 
 	Menu.Basic:addParam("aimQ", "Throw a predicted Spear: ", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("C"))
---	Menu.Basic:addParam("Test", "Cast Test W: ", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("K"))
 	Menu.Basic:addParam("aimQtoggle", "Auto throw a predicted Spear: ", SCRIPT_PARAM_ONKEYTOGGLE, false, string.byte("U"))
 	Menu.Basic:addParam("aimWbehind", "Throw a Trap: ", SCRIPT_PARAM_ONKEYDOWN, false, string.byte("X"))
 	Menu.Basic:addParam("aimWdistance", "Distance trap is casted behind: ", SCRIPT_PARAM_SLICE, 100, 0, 250, -1)
+	Menu.Basic:addParam("autoHeal", "Auto Heal Toggle: ", SCRIPT_PARAM_ONKEYTOGGLE, false, string.byte("N"))
+	Menu.Basic:addParam("autoHealSlider", "Auto Heal if Health below %: ",  SCRIPT_PARAM_SLICE, 50, 0, 100, -1)
 	Menu.Basic:addParam("AutoLevelSkills", "Auto Level Skills (Reload Script!)", SCRIPT_PARAM_LIST, 1, { "No Autolevel", "QEQW - R>Q>E>W", "WEQQ - R>Q>E>W", "EQQW - R>Q>E>W", "EQEWE- R>Q>E>W"})
 	
 	-- HealManager --
-	Menu.HealManager:addParam("HealManager", "Enable/Disable the HealManager: ", SCRIPT_PARAM_ONOFF, true)
-	Menu.HealManager:addParam("healPriority", "HealPriority for the HealManager: ", SCRIPT_PARAM_LIST, 1, {"You", "Team"})
-	Menu.HealManager:addSubMenu(""..myHero.charName..": Your Settings", "Self")
-	Menu.HealManager:addParam("healSelf", "Use the HealManager for yourself: ", SCRIPT_PARAM_ONKEYTOGGLE, false, string.byte("N"))
-	Menu.HealManager.Self:addParam("autoHealSlider", "Auto Heal if your Health below %: ",  SCRIPT_PARAM_SLICE, 50, 0, 100, -1)
-	Menu.HealManager:addSubMenu(""..myHero.charName..": Team Settings", "Team")
-	Menu.HealManager:addParam("healTeam", "Use the HealManager for the team: ", SCRIPT_PARAM_ONKEYTOGGLE, false, string.byte("M"))
-	for _, Team in ipairs(TeamChamps) do
-	Menu.HealManager.Team:addParam(Team.charName, "Heal: " .. Team.charName, SCRIPT_PARAM_ONOFF, false)
-	Menu.HealManager.Team:addParam(Team.charName.."slider", "Auto Heal if Health below %: ", SCRIPT_PARAM_SLICE, 20, 10, 100, -1)
-	end
+
 	-- SBTW Combo --
 	Menu.SBTW:addParam("sbtwKey", "Combo Key: ", SCRIPT_PARAM_ONKEYDOWN, false, 32)
 	Menu.SBTW:addParam("sbtwHQ", "Use "..qHname.." (Q) in Combo", SCRIPT_PARAM_ONOFF, true)
@@ -256,7 +240,6 @@ function AddMenu()
 	
 	-- KillSteal --
 	Menu.KS:addParam("Ignite", "Use Auto Ignite", SCRIPT_PARAM_ONOFF, true)
-	Menu.KS:addParam("smartKS", "Enable smart KS: ", SCRIPT_PARAM_ONOFF, true)
 	Menu.KS:addParam("smartKShuman", "Use smart KS as Human: ", SCRIPT_PARAM_ONOFF, true)
 	Menu.KS:addParam("smartKScougar", "Use smart KS as Cougar: ", SCRIPT_PARAM_ONOFF, true)
 	Menu.KS:addParam("KSuseR", "Switch forms (R) for KS: ", SCRIPT_PARAM_ONOFF, false)
@@ -301,45 +284,29 @@ function AddMenu()
 	Menu.Draw:addParam("drawJumpspots", "Draw Jumpspots while pressing Key: ", SCRIPT_PARAM_ONOFF, true)
 	Menu.Draw:addParam("drawPerJumpspots", "Draw Jumpspots always: ", SCRIPT_PARAM_ONOFF, false)
 	Menu.Draw:addParam("drawKillText", "Draw KillText on enemy: ", SCRIPT_PARAM_ONOFF, true)
-	Menu.Draw:addParam("drawCol", "Draw Collision: ", SCRIPT_PARAM_ONOFF, false)
 	-- LFC --
-	Menu.Draw:addSubMenu(""..myHero.charName..": LFC Settings", "LFC")
+	Menu.Draw:addSubMenu("["..myHero.charName.." - LFC Settings]", "LFC")
 	Menu.Draw.LFC:addParam("LagFree", "Activate Lag Free Circles", SCRIPT_PARAM_ONOFF, false)
 	Menu.Draw.LFC:addParam("CL", "Length before Snapping", SCRIPT_PARAM_SLICE, 350, 75, 2000, 0)
 	Menu.Draw.LFC:addParam("CLinfo", "Higher length = Lower FPS Drops", SCRIPT_PARAM_INFO, "")
-	-- Permashow --
-	Menu.Draw:addSubMenu(""..myHero.charName..": PermaShow Settings", "PermaShow")
-	Menu.Draw.PermaShow:addParam("info", "---- Reload (Double F9) if you change the settings ----", SCRIPT_PARAM_INFO, "")
-	Menu.Draw.PermaShow:addParam("aimQtoggle", "Show Auto Spear: ", SCRIPT_PARAM_ONOFF, true)
-	Menu.Draw.PermaShow:addParam("laneClearTyp", "Show LaneClearTyp: ", SCRIPT_PARAM_ONOFF, true)
-	Menu.Draw.PermaShow:addParam("jungleTyp", "Show JungleTyp: ", SCRIPT_PARAM_ONOFF, true)
-	Menu.Draw.PermaShow:addParam("PredictionMode", "Show PredictionMode: ", SCRIPT_PARAM_ONOFF, true)
+	
 	-- Prediction --
 	Menu.Prediction:addParam("PredictionMode", "Spear Prediction: ", SCRIPT_PARAM_LIST, 1, {"VPrediction", "PROdiction", "BoL-Prediction"})
-	Menu.Prediction:addParam("seperate", "---- VPrediction Settings ----", SCRIPT_PARAM_INFO, "")
+	Menu.Prediction:addParam("BoLHitChance", "HitChance in BoL-Prediction: ", SCRIPT_PARAM_SLICE, 0.7, 0.1, 1, 2)
 	Menu.Prediction:addParam("VPredHitChance", "HitChance in VPrediction: ", SCRIPT_PARAM_LIST, 2, {"Low Hitchance", "High Hitchance", "Target slow/close", "Target immobile", "Target dashing/blinking"})
 	Menu.Prediction:addParam("VPHitbox", "Use HitBox in VPrediction: ", SCRIPT_PARAM_ONOFF, false) 
-	Menu.Prediction:addParam("seperate", "---- PROdiction Settings ----", SCRIPT_PARAM_INFO, "")
 	Menu.Prediction:addParam("ProHitbox", "Use HitBox in PROdiction: ", SCRIPT_PARAM_ONOFF, false) 
-	Menu.Prediction:addParam("seperate", "---- BoL-Prediciton Settings ----", SCRIPT_PARAM_INFO, "")
-	Menu.Prediction:addParam("BoLHitChance", "HitChance in BoL-Prediction: ", SCRIPT_PARAM_SLICE, 0.7, 0.1, 1, 2)
+	Menu.Prediction:addParam("BoLHitbox", "Use HitBox in BoL-Prediction: ", SCRIPT_PARAM_ONOFF, false) 
 	
 	-- Other --
 	Menu:addParam("Version", "Version", SCRIPT_PARAM_INFO, Version)
 
 	-- PermaShow --
-	if Menu.Draw.PermaShow.aimQtoggle
-		then Menu.Basic:permaShow("aimQtoggle")
-	end
-	if Menu.Draw.PermaShow.laneClearTyp
-		then Menu.Farm:permaShow("laneClearTyp")
-	end
-	if Menu.Draw.PermaShow.jungleTyp
-		then Menu.Jungle:permaShow("jungleTyp")
-	end
-	if Menu.Draw.PermaShow.PredictionMode
-		then Menu.Prediction:permaShow("PredictionMode")
-	end
+	Menu.Basic:permaShow("aimQtoggle")
+	Menu.Basic:permaShow("autoHeal")
+	Menu.Farm:permaShow("laneClearTyp")
+	Menu.Jungle:permaShow("jungleTyp")
+	Menu.Prediction:permaShow("PredictionMode")
 end
 ---------------------------------------------------------------------
 --- On Tick ---------------------------------------------------------
@@ -362,14 +329,7 @@ function OnTick()
 			if Menu.Basic.aimQ then AimTheQ()end
 			-- Aim W behind Target --
 			if Menu.Basic.aimWbehind then AimTheWbehind() end
-			-- Test --
-			if Menu.Basic.Test then testWfunc(Target) end
-			
 	end
-	-- HealManager --
-	if Menu.HealManager.HealManager then HealManager() end
-	-- KillSteal--
-	if Menu.KS.smartKS then smartKS() end
 	-- Lane Clear --
 	if Menu.Farm.clearLane then LaneClear() end
 	-- Jungle Steal --
@@ -380,6 +340,8 @@ function OnTick()
 	if Menu.Jungle.jungleKey then JungleClear() end
 	-- Escape --
 	if Menu.Jump.EscapeKey then Escape() end
+	-- Auto Heal --
+	if Menu.Basic.autoHeal then UseAutoHeal() end
 	-- Jump Assistant --
 	if Menu.Jump.Jump then JumpAssistant() end 
 	-- SBTW Combo --
@@ -388,7 +350,6 @@ end
 ---------------------------------------------------------------------
 --- Function Checks for Spells and Forms ----------------------------
 ---------------------------------------------------------------------
-
 function Check()
 	-- Cooldownchecks for Abilitys and Summoners -- 
 	QREADY = (myHero:CanUseSpell(_Q) == READY)
@@ -490,8 +451,6 @@ function OnDraw()
 	if Menu.Draw.drawE and not myHero.dead then
 		if EREADY and Menu.Draw.drawE then DrawCircle(myHero.x, myHero.y, myHero.z, eRange, eColor) end
 	end
-	-- Draw Collission --
-	if Target and Menu.Draw.drawCol then QCol:DrawCollision(myHero, Target) end
 -- Draw Jump Spots --
 	if Menu.Jump.Jump and COUGAR and Menu.Draw.drawJumpspots
 	or Menu.Draw.drawPerJumpspots
@@ -499,8 +458,8 @@ function OnDraw()
 				for i,group in pairs(pouncePosition) do
 					
 					if (GetDistance(group.pA) < displayRange or GetDistance(group.pB) < displayRange) then
-						DrawCircle(group.pA.x, group.pA.y, group.pA.z, minRange, JumpSpotColor)
-						DrawCircle(group.pB.x, group.pB.y, group.pB.z, minRange, JumpSpotColor)
+						DrawCircle(group.pA.x, group.pA.y, group.pA.z, minRange, 0xFFFFBF)
+						DrawCircle(group.pB.x, group.pB.y, group.pB.z, minRange, 0xFFFFBF)
 					end
 				end
 	end
@@ -554,20 +513,12 @@ function AimTheQ()
 end
 -- VPrediction of the Q --
 function AimTheQVP()
-	if Menu.Prediction.VPHitbox
-		then
 			local CastPosition,  HitChance,  Position = VP:GetLineCastPosition(Target, qDelay, qWidth, qRange, qSpeed, myHero, true)
-			if HitChance >= Menu.Prediction.VPredHitChance and (GetDistance(Target) - getHitBoxRadius(Target)/2) <= qRange and QREADY
+			if HitChance >= Menu.Prediction.VPredHitChance and GetDistance(Target) <= 1900 and QREADY
 			then CastSpell(_Q,CastPosition.x,CastPosition.z)
 			end
-	else
-			local CastPosition,  HitChance,  Position = VP:GetLineCastPosition(Target, qDelay, qWidth, qRange, qSpeed, myHero, true)
-			if HitChance >= Menu.Prediction.VPredHitChance and GetDistance(Target) <= qRange and QREADY
-			then CastSpell(_Q,CastPosition.x,CastPosition.z)
-			end
-	end
 end
--- BoLVip-Prediction of the Q --
+-- VIP-Prediction of the Q --
 function AimTheQVIP()
             if VipPredTarget and qp:GetHitChance(Target) > Menu.Prediction.BoLHitChance
 			then
@@ -588,16 +539,16 @@ if Menu.Prediction.ProHitbox
 	then 
 		if (GetDistance(pos) - getHitBoxRadius(unit)/2 < qRange)
 		then
-			local MinionCol = QCol:GetMinionCollision(myHero, Target)
-			if not MinionCol
+        local coll = Collision(qRange, qSpeed, qDelay, qWidth)
+            if not coll:GetMinionCollision(pos, myHero)
 				then CastSpell(_Q, pos.x, pos.z)
             end
-		end
+    end
 else
 		if GetDistance(pos) < qRange
 		then
-        local MinionCol = QCol:GetMinionCollision(myHero, Target)
-		if not MinionCol
+        local coll = Collision(qRange, qSpeed, qDelay, qWidth)
+            if not coll:GetMinionCollision(pos, myHero)
 				then CastSpell(_Q, pos.x, pos.z)
             end
 end
@@ -605,90 +556,48 @@ end
 end
 	-- Calls the function when an enemy starts to dash (Dash, jump, getting knockbacked) --
 function OnDashFunc(unit, pos, spell)
-if Menu.Prediction.ProHitbox
-	then    
-		if (GetDistance(pos) - getHitBoxRadius(unit)/2 < qRange)
+    if (GetDistance(pos) - getHitBoxRadius(unit)/2 < qRange)
+--	else GetDistance(pos) < qRange
 		then
-        local MinionCol = QCol:GetMinionCollision(myHero, Target)
-			if not MinionCol
+        local coll = Collision(qRange, qSpeed, qDelay, qWidth)
+            if not coll:GetMinionCollision(pos, myHero)
 				then CastSpell(_Q, pos.x, pos.z)
             end
-		end
-else
-		if GetDistance(pos) < qRange
-		then
-		local MinionCol = QCol:GetMinionCollision(myHero, Target)
-			if not MinionCol
-				then CastSpell(_Q, pos.x, pos.z)
-            end
-		end
-end
+    end
 end
 	-- Calls the function to hit when an enemy is about to land from a dash (e.g. Tristana W) --
 function AfterDashFunc(unit, pos, spell)
-if Menu.Prediction.ProHitbox
-	then   
-		if (GetDistance(pos) - getHitBoxRadius(unit)/2 < qRange)
+	if (GetDistance(pos) - getHitBoxRadius(unit)/2 < qRange)
+ -- if GetDistance(pos) < qRange
 		then
-        local MinionCol = QCol:GetMinionCollision(myHero, Target)
-			if not MinionCol
+        local coll = Collision(qRange, qSpeed, qDelay, qWidth)
+            if not coll:GetMinionCollision(pos, myHero)
 				then CastSpell(_Q, pos.x, pos.z)
             end
     end
-else
-		if GetDistance(pos) < qRange
-		then
-        local MinionCol = QCol:GetMinionCollision(myHero, Target)
-			if not MinionCol
-				then CastSpell(_Q, pos.x, pos.z)
-            end
-		end
-end
 end
 	-- Calls the function when an enemy is immobile (stunned/surpressed) -- 
 function OnImmobileFunc(unit, pos, spell)
-if Menu.Prediction.ProHitbox
-	then   
-		if (GetDistance(pos) - getHitBoxRadius(unit)/2 < qRange)
+	if (GetDistance(pos) - getHitBoxRadius(unit)/2 < qRange)
+ -- if GetDistance(pos) < qRange
 		then
-        local MinionCol = QCol:GetMinionCollision(myHero, Target)
-			if not MinionCol
+        local coll = Collision(qRange, qSpeed, qDelay, qWidth)
+            if not coll:GetMinionCollision(pos, myHero)
 				then CastSpell(_Q, pos.x, pos.z)
             end
     end
-else
-		if GetDistance(pos) < qRange
-		then
-        local MinionCol = QCol:GetMinionCollision(myHero, Target)
-			if not MinionCol
-				then CastSpell(_Q, pos.x, pos.z)
-            end
-		end
-end
 end
 	-- Calls the function right when an enemys immobile ends --
 function AfterImmobileFunc(unit, pos, spell)
-if Menu.Prediction.ProHitbox
-	then   
-		if (GetDistance(pos) - getHitBoxRadius(unit)/2 < qRange)
+-- if GetDistance(pos) < qRange
+   if (GetDistance(pos) - getHitBoxRadius(unit)/2 < qRange)
 		then
-        local MinionCol = QCol:GetMinionCollision(myHero, Target)
-			if not MinionCol
+        local coll = Collision(qRange, qSpeed, qDelay, qWidth)
+            if not coll:GetMinionCollision(pos, myHero)
 				then CastSpell(_Q, pos.x, pos.z)
             end
     end
-else
-		if GetDistance(pos) < qRange
-		then
-        local MinionCol = QCol:GetMinionCollision(myHero, Target)
-			if not MinionCol
-				then CastSpell(_Q, pos.x, pos.z)
-            end
-		end
 end
-end
-	
-
 -- Aims W (Trap) at the VPredicted Target --
 function AimtheW()
 		if HUMAN == true then
@@ -806,7 +715,15 @@ function UseSelfHeal()
 			CastSpell(_E, myHero)
 	end
 end
------------------------------------------------------------------
+function UseAutoHeal()
+	if HUMAN and not Menu.SBTW.sbtwKey and not Menu.Jump.EscapeKey and not Recalling
+		then
+			if myHero.health < (myHero.maxHealth *(Menu.Basic.autoHealSlider/100)) and EREADY then
+			CastSpell(_E, myHero)
+			end
+	end
+end
+---------------------------------------------------------------------
 --- KillSteal Functions ---------------------------------------------
 ---------------------------------------------------------------------
 function AutoIgnite(enemy)
@@ -1599,7 +1516,6 @@ end
 --- Function Damage Calculations for Skills/Items/Enemys --- 
 ---------------------------------------------------------------------
 function DamageCalculation()
--- CalculateSpearDamage()
 	for i=1, heroManager.iCount do
 		local enemy = heroManager:GetHero(i)
 			if ValidTarget(enemy) and enemy ~= nil
@@ -1615,10 +1531,10 @@ function DamageCalculation()
 				bwcDmg 		= ((bwcReady and getDmg("BWC", enemy, myHero)) or 0)	-- Bilgewater Cutlass
 				botrkDmg 	= ((botrkReady and getDmg("RUINEDKING", enemy, myHero)) or 0)	-- Blade of the Ruined King
 				sheenDmg	= ((sheenReady and getDmg("SHEEN", enemy, myHero)) or 0)	-- Sheen
-		--		lichbaneDmg = ((lichbaneReady and getDmg("LICHBANE", enemy, myHero)) or 0)	-- Lichbane
+			--	lichbaneDmg = ((lichbaneReady and getDmg("LICHBANE", enemy, myHero)) or 0)	-- Lichbane
 				trinityDmg 	= ((trinityReady and getDmg("TRINITY", enemy, myHero)) or 0)	-- Trinity Force
 				liandrysDmg = ((liandrysReady and getDmg("LIANDRYS", enemy, myHero)) or 0)	-- Liandrys 
-				local extraDmg 	= iDmg + dfgDmg + hxgDmg + bwcDmg + botrkDmg + sheenDmg + trinityDmg + liandrysDmg-- + lichbaneDmg 
+				local extraDmg 	= iDmg + dfgDmg + hxgDmg + bwcDmg + botrkDmg + sheenDmg + trinityDmg + liandrysDmg -- + lichbaneDmg 
 				local abilityDmg = qHDmg + qCDmg + wCDmg + eCDmg
 				local totalDmg = abilityDmg + extraDmg
 	-- Set Kill Text --	
@@ -1686,51 +1602,5 @@ function DamageCalculation()
 					else KillText[i] = 1
 					end	
 		end
-	end
-end
----------------------------------------------------------------------
--- HealManager ------------------------------------------------------
--- Caluclates if we or our team needs to be healed based on Menu
----------------------------------------------------------------------
-function HealManager()
-	if HUMAN and EREADY and not Menu.SBTW.sbtwKey and not Menu.Jump.EscapeKey and not Recalling
-		then
-			HealCheckSelf()
-			if Menu.HealManager.healPriority == 1 and needSelfHeal
-				then HealManagerSelf()
-			end
-			if Menu.HealManager.healPriority == 1 and not needSelfHeal
-				then HealManagerTeam()
-			end
-			if Menu.HealManager.healPriority == 2
-				then HealManagerTeam()
-			end
-	end
-end
--- Casts Heal on us -- 
-function HealManagerSelf()
-	if Menu.HealManager.healSelf
-		then CastSpell(_E, myHero)
-	end
-end
--- Calculates the health of our Team and heals if its under a certain %--
-function HealManagerTeam()
-	if Menu.HealManager.healTeam
-		then
-			for _, Team in pairs(TeamChamps) do
-				if Menu.HealManager.Team[Team.charName] and GetDistance(Team) >= eRange
-					then
-						if Team.health < (Team.maxHealth * (Menu.HealManager.Team[Team.charName].."slider"/100))
-							then CastSpell(_E, Team)
-						end
-				end
-			end
-	end
-end
--- Checks if our Hero needs a heal (implemented into checks)
-function HealCheckSelf()
-	if myHero.health < (myHero.maxHealth * (Menu.HealManager.Self.autoHealSlider/100))
-		then needSelfHeal = true
-	else needSelfHeal = false
 	end
 end
